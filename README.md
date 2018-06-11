@@ -2,9 +2,9 @@
 Simple slack bot able to execute commands and download videos
 
 ## Getting Started
-To send command to bot, mention bot in DM, @droidz <command> <arguments>
-+ do <bash command>            -   execute bash command
-+ dl <title>  <url>            -   download video with a title from provided m3u8 url
+To send command to bot, mention bot in DM, @droidz [command] [arguments]
++ do [bash command]            -   execute bash command
++ dl [title]  [url]            -   download video with a title from provided m3u8 url
 + mvc                          -   find and move all mp4 files to ext folder
 + clear                        -   clear /downloads/stream_video folder
 + list                         -   list files in /downloads/ext folder
