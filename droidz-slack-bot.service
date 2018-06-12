@@ -1,13 +1,19 @@
 [Unit]
 Description=Start Slack bot which can execute command and downloads m3u8 videos
 After=multi-user.target
+After=network.target
 
 [Service]
 Type=idle
 Environment=SLACK_BOT_TOKEN=<PUT YOUR TOKEN HERE>
+Environment=WORK_DIR=<PUT WORKING DIRECTORY HERE>
+Environment=OUT_DIR=<PUT OUTPUT DIRECTORY HERE>
 ExecStart=/usr/bin/python -u /usr/local/bin/droidz-slack-bot.py
 StandardOutput=syslog+console
 StandardError=syslog+console
+Restart=always
+RestartSec=60s
+
 
 [Install]
 WantedBy=multi-user.target
