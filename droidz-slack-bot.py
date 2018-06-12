@@ -1,7 +1,10 @@
 #!/usr/bin/python
-#encoding=utf-8
+# encoding=utf-8
+#
+# Author: Sergey Bulavintsev
+# Date  : 12.06.2018
+#--------------------------------------
 from __future__ import unicode_literals
-import requests
 import os
 import time
 import re
@@ -9,6 +12,7 @@ import subprocess
 import shutil
 import logging
 import youtube_dl
+import thread
 from slackclient import SlackClient
 
 # Initialize variables
@@ -205,7 +209,8 @@ def handle_command(command, channel):
             cmd, title, url_pre = command.split()
             url = url_pre[1:-1] # Remove < and > symbols
             outfile = os.path.join(WORK_DIR, '{0}.mp4'.format(title))
-            download_media(outfile, url, channel)
+            # Execute function in a thread - we don't care about it's success or status
+            thread.start_new_thread(download_media,(outfile, url, channel))
 
         except Exception as e:
             print "Error: %s " % e
