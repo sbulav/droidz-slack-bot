@@ -2,21 +2,21 @@
 # encoding=utf-8
 #
 # Author: Sergey Bulavintsev
-# Date  : 12.06.2018
 #--------------------------------------
 from __future__ import unicode_literals
 import os
+import requests
 import time
 import re
 import subprocess
 import shutil
-import logging
 import youtube_dl
 import thread
 from slackclient import SlackClient
 
 # Initialize variables
-slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
+SLACK_TOKEN  = os.environ.get('SLACK_BOT_TOKEN')
+slack_client = SlackClient(SLACK_TOKEN)
 WORK_DIR     = os.environ.get('WORK_DIR')
 OUT_DIR      = os.environ.get('OUT_DIR')
 # droidbot's user ID in Slack: value is assigned after the bot starts up
@@ -98,6 +98,17 @@ def parse_bot_commands(slack_events):
     for event in slack_events:
         if event["type"] == "message" and not "subtype" in event:
             user_id, message = parse_direct_mention(event["text"])
+            if event["files"]:
+                url = event["files"][0]["url_private_download"]
+                name = event["files"][0]["title"]
+#                import pdb;pdb.set_trace()
+                if name.endswith('.m3u'):
+                    print "Downloading %s playlist from URL: %s" % (name, url)
+                    outfile = download_file(url, name)
+                    if os.path.exists(outfile):
+                        message = "pl %s %s" % (name, outfile)
+                    return message, event["channel"]
+
             if user_id == droidbot_id:
                 print "Received Command: %s" % message
                 return message, event["channel"]
@@ -160,6 +171,27 @@ Download Completed:
         send_message(response, channel)
     return result
 
+# download a file to a specific location
+def download_file(url, local_filename):
+    outfile = ''
+    if not os.path.exists(WORK_DIR):
+        os.makedirs(WORK_DIR)
+    try:
+        outfile = os.path.join(WORK_DIR, local_filename)
+        print "Downloading file: %s" % outfile
+        headers = {'Authorization': 'Bearer '+SLACK_TOKEN}
+        r = requests.get(url, headers=headers)
+        with open(outfile, 'w') as f:
+            for chunk in r.iter_content(chunk_size=1024):
+                if chunk: f.write(chunk)
+        print "File %s successfully downloaded" % outfile
+    except Exception as e:
+        response = "Download failed!!! Error:\t\n"
+        response += "%s" % e
+        return False
+
+    return outfile
+
 # Parse received command and execute it if its known
 def handle_command(command, channel):
     # Default response is help text for the user
@@ -216,6 +248,12 @@ def handle_command(command, channel):
             print "Error: %s " % e
             pass
             return False
+        return True
+
+    # Download files from local playlist
+    if command.startswith("pl"):
+        #https://github.com/rg3/youtube-dl/blob/3e4cedf9e8cd3157df2457df7274d0c842421945/youtube_dl/YoutubeDL.py#L137-L312
+        send_message("Received PL command %s" % command, channel)
         return True
 
     # If command is not recognized
