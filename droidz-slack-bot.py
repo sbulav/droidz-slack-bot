@@ -11,7 +11,8 @@ import re
 import subprocess
 import shutil
 import youtube_dl
-import thread
+#import thread
+from threading import Thread
 from Queue import Queue
 
 import sys
@@ -43,7 +44,15 @@ class MyLogger(object):
 def my_hook(d):
     if d['status'] == 'finished':
         print "{0} successfully downloaded, elapsed: {1}, size: {2}".format(d['filename'],d['_elapsed_str'],d['_total_bytes_str'])
+        mainQueue.task_done()
 
+
+def worker():
+    while True:
+        time.sleep(5)
+        item = mainQueue.get()
+        if item:
+            download_media(item)
 
 # Sends help message
 def send_help(channel):
@@ -147,7 +156,9 @@ def execute_command(mycmd,channel):
         pass
         return False
 
-def download_media(outfile, url, channel):
+#def download_media(outfile, url, channel):
+def download_media(item):
+    outfile, url, channel = item
     download_start_response = """\
 Download Started:
 -->Filename: {0}
@@ -160,7 +171,7 @@ Download Completed:
     response = download_start_response.format(outfile, url)
     print response
     send_message(response, channel)
-    import pdb;pdb.set_trace()
+    #import pdb;pdb.set_trace()
     if not os.path.exists(os.path.split(outfile)[0]):
         os.makedirs(os.path.split(outfile)[0])
     ydl_opts = {
@@ -252,7 +263,8 @@ def handle_command(command, channel):
             url = url_pre[1:-1] # Remove < and > symbols
             outfile = os.path.join(WORK_DIR, '{0}.mp4'.format(title))
             # Execute function in a thread - we don't care about it's success or status
-            thread.start_new_thread(download_media,(outfile, url, channel))
+            #thread.start_new_thread(download_media,(outfile, url, channel))
+            mainQueue.put((outfile,url,channel))
 
         except Exception as e:
             print "Error: %s " % e
@@ -282,6 +294,7 @@ def handle_command(command, channel):
             outfile = '{0}/{1}/{1}-{2}.mp4'.format(WORK_DIR,title.split('.')[0],str(number))
             print "Starting download of {0} from {1}".format(outfile,url)
             #thread.start_new_thread(download_media,(outfile, url, channel))
+            mainQueue.put((outfile,url,channel))
             number+=1
 
         return True
@@ -304,6 +317,11 @@ if __name__ == "__main__":
 
     # Initialize main queue
     mainQueue = Queue(maxsize=100)
+    # Start thread workers
+    for i in range(NUM_WORKERS):
+        t = Thread(target=worker)
+        t.daemon = True
+        t.start()
 
     # Fix encoding to allow playlists with ASCII symbols
     reload(sys)
