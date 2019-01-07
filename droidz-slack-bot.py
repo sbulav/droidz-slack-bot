@@ -11,7 +11,6 @@ import re
 import subprocess
 import shutil
 import youtube_dl
-#import thread
 from threading import Thread
 from Queue import Queue
 
@@ -29,6 +28,7 @@ droidbot_id = None
 # constants
 RTM_READ_DELAY = 1 # 1 second delay between reading from RTM
 MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
+# Allow 2 simultaneous downloads
 NUM_WORKERS = 2
 
 class MyLogger(object):
@@ -46,13 +46,17 @@ def my_hook(d):
         print "{0} successfully downloaded, elapsed: {1}, size: {2}".format(d['filename'],d['_elapsed_str'],d['_total_bytes_str'])
         mainQueue.task_done()
 
-
+# Thread that will check queue and start downloads
 def worker():
     while True:
         time.sleep(5)
         item = mainQueue.get()
         if item:
-            download_media(item)
+            # Don't want thread to be killed on failed DL
+            try:
+                download_media(item)
+            except:
+                pass
 
 # Sends help message
 def send_help(channel):
@@ -171,9 +175,9 @@ Download Completed:
     response = download_start_response.format(outfile, url)
     print response
     send_message(response, channel)
-    #import pdb;pdb.set_trace()
-    if not os.path.exists(os.path.split(outfile)[0]):
-        os.makedirs(os.path.split(outfile)[0])
+#    import pdb;pdb.set_trace()
+    # Create sub-directory with pl title
+
     ydl_opts = {
         #'outtmpl': '/downloads/stream_video/title-%(id)s.%(ext)s'.format(WORK_DIR,title),
         'outtmpl': outfile,
@@ -279,7 +283,7 @@ def handle_command(command, channel):
         send_message("Received PL command %s" % command, channel)
         urls = []
         number = 1
-        
+
         # Unfortunately, download from batch file is not suppored
         # So I'm passing urls by one
         with open(local_file, "r") as f:
@@ -287,13 +291,19 @@ def handle_command(command, channel):
                 li = line.strip()
                 if li.startswith("http"):
                     urls.append(li)
-        #https://github.com/rg3/youtube-dl/blob/3e4cedf9e8cd3157df2457df7274d0c842421945/youtube_dl/YoutubeDL.py#L137-L312
 
+        # Create output sub-directory
+        dlpath = os.path.join(WORK_DIR,title.split('.')[0])
+        try:
+            if not os.path.exists(dlpath):
+                os.makedirs(dlpath)
+        except:
+            pass
+
+        # Add each url from playlist into mainQueue for further download
         for url in urls:
             #WORK_DIR/title/title-number.ext
-            outfile = '{0}/{1}/{1}-{2}.mp4'.format(WORK_DIR,title.split('.')[0],str(number))
-            print "Starting download of {0} from {1}".format(outfile,url)
-            #thread.start_new_thread(download_media,(outfile, url, channel))
+            outfile=os.path.join(dlpath,title.split('.')[0]+"-"+str(number)+".mp4")
             mainQueue.put((outfile,url,channel))
             number+=1
 
@@ -307,7 +317,7 @@ def handle_command(command, channel):
 # Main function
 if __name__ == "__main__":
     print "Initializing variables..."
-    
+
     # Check working directories are initialized
     if not WORK_DIR or not OUT_DIR:
         raise Exception("Working directories arent't set!")
@@ -317,6 +327,7 @@ if __name__ == "__main__":
 
     # Initialize main queue
     mainQueue = Queue(maxsize=100)
+
     # Start thread workers
     for i in range(NUM_WORKERS):
         t = Thread(target=worker)
