@@ -82,7 +82,13 @@ def list_files(root_src_dir):
 
 # Get file size in MB
 def get_file_mb(filename):
-    return str(os.path.getsize(filename) >> 20)
+    try:
+        filesize = str(os.path.getsize(filename) >> 20)
+    except:
+        filesize = '0'
+        pass
+
+    return filesize
 
 # Send a message in Slack channel
 def send_message(response, channel):
@@ -149,14 +155,13 @@ Download Completed:
 -->Filename: {0}
 -->Size: {1}"""
 
-    import pdb;pdb.set_trace()
     response = download_start_response.format(outfile, url)
     print response
     send_message(response, channel)
     if not os.path.exists(WORK_DIR):
         os.makedirs(WORK_DIR)
     ydl_opts = {
-        #'outtmpl': '/downloads/stream_video/%(title)s-%(id)s.%(ext)s'.format(WORK_DIR,title),
+        #'outtmpl': '/downloads/stream_video/title-%(id)s.%(ext)s'.format(WORK_DIR,title),
         'outtmpl': outfile,
         'verbose': True,
         'ignoreerrors': True,
@@ -254,10 +259,11 @@ def handle_command(command, channel):
 
     # Download files from local playlist
     if command.startswith("pl"):
-        command = "pl pap.m3u /downloads/stream_video/pap.m3u"
+        command = "pl test.m3u {0}/test.m3u".format(WORK_DIR)
         cmd, title, local_file = command.split()
         send_message("Received PL command %s" % command, channel)
-        urls=[]
+        urls = []
+        number = 1
         
         # Unfortunately, download from batch file is not suppored
         # So I'm passing urls by one
@@ -267,9 +273,14 @@ def handle_command(command, channel):
                 if li.startswith("http"):
                     urls.append(li)
         #https://github.com/rg3/youtube-dl/blob/3e4cedf9e8cd3157df2457df7274d0c842421945/youtube_dl/YoutubeDL.py#L137-L312
+
         for url in urls:
-            outfile = '{0}/%({1})s-{2}.%(ext)s'.format(WORK_DIR,title.split('.')[0],os.path.basename(url))
+            #WORK_DIR/title-number.ext
+            outfile = '{0}/{1}-{2}.%(ext)s'.format(WORK_DIR,title.split('.')[0],str(number))
+            print "Starting download of {0} from {1}".format(outfile,url)
             thread.start_new_thread(download_media,(outfile, url, channel))
+            number+=1
+
         return True
 
     # If command is not recognized
