@@ -12,6 +12,8 @@ import subprocess
 import shutil
 import youtube_dl
 import thread
+from Queue import Queue
+
 import sys
 from slackclient import SlackClient
 
@@ -26,6 +28,7 @@ droidbot_id = None
 # constants
 RTM_READ_DELAY = 1 # 1 second delay between reading from RTM
 MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
+NUM_WORKERS = 2
 
 class MyLogger(object):
     def debug(self, msg):
@@ -278,7 +281,7 @@ def handle_command(command, channel):
             #WORK_DIR/title/title-number.ext
             outfile = '{0}/{1}/{1}-{2}.mp4'.format(WORK_DIR,title.split('.')[0],str(number))
             print "Starting download of {0} from {1}".format(outfile,url)
-            thread.start_new_thread(download_media,(outfile, url, channel))
+            #thread.start_new_thread(download_media,(outfile, url, channel))
             number+=1
 
         return True
@@ -291,12 +294,18 @@ def handle_command(command, channel):
 # Main function
 if __name__ == "__main__":
     print "Initializing variables..."
+    
     # Check working directories are initialized
     if not WORK_DIR or not OUT_DIR:
         raise Exception("Working directories arent't set!")
     else:
         print "Working directory = %s" % WORK_DIR
         print "Output  directory = %s" % OUT_DIR
+
+    # Initialize main queue
+    mainQueue = Queue(maxsize=100)
+
+    # Fix encoding to allow playlists with ASCII symbols
     reload(sys)
     sys.setdefaultencoding('utf-8')
 
