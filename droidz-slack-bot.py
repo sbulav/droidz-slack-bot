@@ -12,6 +12,7 @@ import subprocess
 import shutil
 import youtube_dl
 import thread
+import sys
 from slackclient import SlackClient
 
 # Initialize variables
@@ -98,7 +99,7 @@ def parse_bot_commands(slack_events):
     for event in slack_events:
         if event["type"] == "message" and not "subtype" in event:
             user_id, message = parse_direct_mention(event["text"])
-            if event["files"]:
+            if "files" in event:
                 url = event["files"][0]["url_private_download"]
                 name = event["files"][0]["title"]
 #                import pdb;pdb.set_trace()
@@ -148,6 +149,7 @@ Download Completed:
 -->Filename: {0}
 -->Size: {1}"""
 
+    import pdb;pdb.set_trace()
     response = download_start_response.format(outfile, url)
     print response
     send_message(response, channel)
@@ -156,7 +158,7 @@ Download Completed:
     ydl_opts = {
         #'outtmpl': '/downloads/stream_video/%(title)s-%(id)s.%(ext)s'.format(WORK_DIR,title),
         'outtmpl': outfile,
-        'verbose': False,
+        'verbose': True,
         'ignoreerrors': True,
         'format': 'mp4',
         'prefer_ffmpeg': True,
@@ -252,8 +254,22 @@ def handle_command(command, channel):
 
     # Download files from local playlist
     if command.startswith("pl"):
-        #https://github.com/rg3/youtube-dl/blob/3e4cedf9e8cd3157df2457df7274d0c842421945/youtube_dl/YoutubeDL.py#L137-L312
+        command = "pl pap.m3u /downloads/stream_video/pap.m3u"
+        cmd, title, local_file = command.split()
         send_message("Received PL command %s" % command, channel)
+        urls=[]
+        
+        # Unfortunately, download from batch file is not suppored
+        # So I'm passing urls by one
+        with open(local_file, "r") as f:
+            for line in f.readlines():
+                li = line.strip()
+                if li.startswith("http"):
+                    urls.append(li)
+        #https://github.com/rg3/youtube-dl/blob/3e4cedf9e8cd3157df2457df7274d0c842421945/youtube_dl/YoutubeDL.py#L137-L312
+        for url in urls:
+            outfile = '{0}/%({1})s-{2}.%(ext)s'.format(WORK_DIR,title.split('.')[0],os.path.basename(url))
+            thread.start_new_thread(download_media,(outfile, url, channel))
         return True
 
     # If command is not recognized
@@ -270,6 +286,8 @@ if __name__ == "__main__":
     else:
         print "Working directory = %s" % WORK_DIR
         print "Output  directory = %s" % OUT_DIR
+    reload(sys)
+    sys.setdefaultencoding('utf-8')
 
     if slack_client.rtm_connect(with_team_state=False,reconnect=True):
         print("Droidz Bot connected and running!")
