@@ -87,7 +87,6 @@ def get_file_mb(filename):
     except:
         filesize = '0'
         pass
-
     return filesize
 
 # Send a message in Slack channel
@@ -158,12 +157,13 @@ Download Completed:
     response = download_start_response.format(outfile, url)
     print response
     send_message(response, channel)
-    if not os.path.exists(WORK_DIR):
-        os.makedirs(WORK_DIR)
+    import pdb;pdb.set_trace()
+    if not os.path.exists(os.path.split(outfile)[0]):
+        os.makedirs(os.path.split(outfile)[0])
     ydl_opts = {
         #'outtmpl': '/downloads/stream_video/title-%(id)s.%(ext)s'.format(WORK_DIR,title),
         'outtmpl': outfile,
-        'verbose': True,
+        'verbose': False,
         'ignoreerrors': True,
         'format': 'mp4',
         'prefer_ffmpeg': True,
@@ -259,7 +259,7 @@ def handle_command(command, channel):
 
     # Download files from local playlist
     if command.startswith("pl"):
-        command = "pl test.m3u {0}/test.m3u".format(WORK_DIR)
+        #command = "pl test.m3u {0}/test.m3u".format(WORK_DIR)
         cmd, title, local_file = command.split()
         send_message("Received PL command %s" % command, channel)
         urls = []
@@ -275,8 +275,8 @@ def handle_command(command, channel):
         #https://github.com/rg3/youtube-dl/blob/3e4cedf9e8cd3157df2457df7274d0c842421945/youtube_dl/YoutubeDL.py#L137-L312
 
         for url in urls:
-            #WORK_DIR/title-number.ext
-            outfile = '{0}/{1}-{2}.%(ext)s'.format(WORK_DIR,title.split('.')[0],str(number))
+            #WORK_DIR/title/title-number.ext
+            outfile = '{0}/{1}/{1}-{2}.mp4'.format(WORK_DIR,title.split('.')[0],str(number))
             print "Starting download of {0} from {1}".format(outfile,url)
             thread.start_new_thread(download_media,(outfile, url, channel))
             number+=1
