@@ -67,6 +67,7 @@ def send_help(channel):
    *mvc*                          -   find and move all mp4 files to ext folder
    *clear*                        -   clear /downloads/stream_video folder
    *list*                         -   list files in /downloads/ext folder
+   <playlist.m3u>                 -   attach a playlist with m3u extension for download
 """
 
     send_message(help_response, channel)
