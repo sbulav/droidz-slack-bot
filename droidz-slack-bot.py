@@ -174,9 +174,9 @@ Download Completed:
 -->Size: {1}"""
 
     download_skip_response = """\
-Download Completed:
+Download Skipped:
 -->Filename: {0}
--->Size: {1}"""
+-->Reason:File already exists and not empty"""
 
     response = download_start_response.format(outfile, url)
     print response
@@ -184,7 +184,7 @@ Download Completed:
 #    import pdb;pdb.set_trace()
     # Check that file exists and is not empty, otherwise skip download
     if os.path.exists(outfile) and os.path.getsize(outfile) > 0:
-        response = download_skip_response.format(outfile, url)
+        response = download_skip_response.format(outfile)
         print response
         send_message(response, channel)
         return False
