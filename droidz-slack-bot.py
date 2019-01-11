@@ -173,12 +173,23 @@ Download Completed:
 -->Filename: {0}
 -->Size: {1}"""
 
+    download_skip_response = """\
+Download Completed:
+-->Filename: {0}
+-->Size: {1}"""
+
     response = download_start_response.format(outfile, url)
     print response
     send_message(response, channel)
 #    import pdb;pdb.set_trace()
-    # Create sub-directory with pl title
+    # Check that file exists and is not empty, otherwise skip download
+    if os.path.exists(outfile) and os.path.getsize(outfile) > 0:
+        response = download_skip_response.format(outfile, url)
+        print response
+        send_message(response, channel)
+        return False
 
+    # Create a set of options for youtube-dl
     ydl_opts = {
         #'outtmpl': '/downloads/stream_video/title-%(id)s.%(ext)s'.format(WORK_DIR,title),
         'outtmpl': outfile,
@@ -304,7 +315,7 @@ def handle_command(command, channel):
         # Add each url from playlist into mainQueue for further download
         for url in urls:
             #WORK_DIR/title/title-number.ext
-            outfile=os.path.join(dlpath,title.split('.')[0]+"-"+str(number)+".mp4")
+            outfile=os.path.join(dlpath,title.split('.')[0]+"-00"+str(number)+".mp4")
             mainQueue.put((outfile,url,channel))
             number+=1
 
